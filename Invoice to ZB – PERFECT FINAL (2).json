@@ -1,0 +1,1229 @@
+{
+  "name": "Invoice to ZB – PERFECT FINAL",
+  "nodes": [
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "ocr-check-001",
+              "leftValue": "={{ $json.needsOCR }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "67cf41aa-ce04-49bc-bcb7-e67a75e33585",
+      "name": "Needs OCR?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        208,
+        5136
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "valid-check-001",
+              "leftValue": "={{ $json.validation.errorCount }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "5d95a86c-68b4-43d2-87c1-fdfd98fadaca",
+      "name": "Validation Passed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        2688,
+        5136
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Convert ZB XML string to binary file for Google Drive upload\nconst data = $input.item.json;\nconst xmlContent = data.zbXML;\nconst fileName = data.xmlFileName || `ZB_${Date.now()}.xml`;\nconst base64 = Buffer.from(xmlContent, 'utf8').toString('base64');\n\nreturn {\n  json: data,\n  binary: {\n    data: {\n      data: base64,\n      mimeType: 'application/xml',\n      fileName: fileName,\n      fileExtension: 'xml'\n    }\n  }\n};"
+      },
+      "id": "f6563c72-c72a-48f1-a59a-be2f37e60f3b",
+      "name": "Convert XML to Binary1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3328,
+        4880
+      ]
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "triggerOn": "specificFolder",
+        "folderToWatch": {
+          "__rl": true,
+          "value": "1pj2Tau1Ya0qV0ByVs4Mx1Z7ifeZmfwWV",
+          "mode": "list",
+          "cachedResultName": "Parthiban",
+          "cachedResultUrl": "https://drive.google.com/drive/folders/1pj2Tau1Ya0qV0ByVs4Mx1Z7ifeZmfwWV"
+        },
+        "event": "fileCreated",
+        "options": {}
+      },
+      "id": "7934c572-0f4b-4921-9f05-a88ac2eb8732",
+      "name": "Google Drive Trigger",
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1440,
+        5136
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "cvn4jDjezrxSHaG7",
+          "name": "Google Drive OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "id": "ff566bc9-382c-4be1-9fcb-c99279af2600",
+      "name": "Download PDF from Drive",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -1040,
+        5136
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "cvn4jDjezrxSHaG7",
+          "name": "Google Drive OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const fileName = $('Google Drive Trigger').item.json.name || 'unknown.pdf';\nconst fileId = $('Google Drive Trigger').item.json.id;\nconst triggeredAt = new Date().toISOString();\n\nreturn {\n  json: {\n    fileName,\n    fileId,\n    triggeredAt,\n    runId: `RUN-${Date.now()}`,\n    status: 'STARTED',\n    sourcePdfUrl: `https://drive.google.com/file/d/${fileId}/view`\n  },\n  binary: $input.item.binary\n};"
+      },
+      "id": "712668ac-f256-4fc1-b2ad-67db55f26071",
+      "name": "Set Run Metadata",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -704,
+        5136
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "options": {}
+      },
+      "id": "5af9c09c-a709-44da-bdbd-02c31ceff028",
+      "name": "Extract Text from PDF",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        -384,
+        5136
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Always re-attach binary from Download node so it's available for OCR later\nconst extractedText = $input.item.json.text || '';\n\nif (extractedText.trim().length === 0) {\n  return {\n    json: {\n      ...$input.item.json,\n      ...$('Set Run Metadata').item.json,\n      needsOCR: true,\n      extractedText: ''\n    },\n    binary: $('Download PDF from Drive').item.binary\n  };\n}\n\nreturn {\n  json: {\n    ...$input.item.json,\n    ...$('Set Run Metadata').item.json,\n    needsOCR: false,\n    extractedText: extractedText\n  },\n  binary: $('Download PDF from Drive').item.binary\n};"
+      },
+      "id": "f499f10e-9d56-4e85-9a4c-fdbd80a38aa7",
+      "name": "Check Extraction Quality",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -64,
+        5136
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return {\n  json: {\n    ...$input.item.json,\n    extractionMethod: 'DIGITAL'\n  },\n  binary: $input.item.binary\n};"
+      },
+      "id": "2ddfeb1c-20c1-4808-8a9b-fc52ccc9727c",
+      "name": "Mark Digital Extraction",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        944,
+        5376
+      ]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o",
+          "mode": "list",
+          "cachedResultName": "GPT-4O"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You are an expert invoice data extractor. Extract invoice data from the text below and return ONLY a valid JSON object. No explanation. No markdown fences. No extra text.\n\nReturn exactly this structure:\n{\n  \"invoice_number\": \"\",\n  \"invoice_date\": \"YYYY-MM-DD\",\n  \"due_date\": \"YYYY-MM-DD\",\n  \"document_type\": \"INVOICE\",\n  \"currency\": \"\",\n  \"purchase_order_number\": \"\",\n  \"payment_terms\": \"\",\n  \"notes\": \"\",\n  \"supplier\": {\n    \"name\": \"\",\n    \"address\": \"\",\n    \"country_code\": \"\",\n    \"vat_number\": \"\",\n    \"iban\": \"\",\n    \"swift\": \"\"\n  },\n  \"buyer\": {\n    \"name\": \"\",\n    \"address\": \"\",\n    \"country_code\": \"\",\n    \"vat_number\": \"\"\n  },\n  \"line_items\": [\n    {\n      \"line_number\": 1,\n      \"description\": \"\",\n      \"quantity\": 0,\n      \"unit\": \"\",\n      \"unit_price\": 0,\n      \"vat_rate\": 0,\n      \"vat_amount\": 0,\n      \"line_total_excl_vat\": 0,\n      \"line_total_incl_vat\": 0\n    }\n  ],\n  \"subtotal_excl_vat\": 0,\n  \"total_vat\": 0,\n  \"total_incl_vat\": 0\n}\n\nRules:\n- country_code must be ISO 2-letter code (KR=Korea, TW=Taiwan, MY=Malaysia etc)\n- invoice_date must be YYYY-MM-DD format\n- All amounts must be numbers not strings\n- line_total_excl_vat = quantity x unit_price\n- total_incl_vat = subtotal_excl_vat + total_vat\n\nInvoice text:\n{{ $json.extractedText }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "b84e7e64-136a-4503-b6ac-1e45891fbeb9",
+      "name": "AI Parse Invoice to JSON",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.4,
+      "position": [
+        1632,
+        5136
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "n6dQz94BJHrJt0Zn",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "let rawContent = $input.item.json.message?.content\n  || $input.item.json.choices?.[0]?.message?.content\n  || $input.item.json[0]?.message?.content\n  || '';\n\n// Strip markdown fences if present\nrawContent = rawContent.replace(/```json/gi, '').replace(/```/g, '').trim();\n\nlet parsedInvoice;\ntry {\n  parsedInvoice = JSON.parse(rawContent);\n} catch (e) {\n  // Try to extract JSON object from the text\n  const match = rawContent.match(/{[\\s\\S]*}/);\n  if (match) {\n    try {\n      parsedInvoice = JSON.parse(match[0]);\n    } catch (e2) {\n      throw new Error('AI_PARSE_FAILED: ' + rawContent.substring(0, 300));\n    }\n  } else {\n    throw new Error('AI_PARSE_FAILED: No JSON found in: ' + rawContent.substring(0, 300));\n  }\n}\n\n// Carry forward all metadata from upstream\nconst meta = $('Check Extraction Quality').item.json;\n\nreturn {\n  json: {\n    runId: meta.runId,\n    fileName: meta.fileName,\n    fileId: meta.fileId,\n    triggeredAt: meta.triggeredAt,\n    sourcePdfUrl: meta.sourcePdfUrl,\n    extractionMethod: meta.extractionMethod || 'DIGITAL',\n    invoice: parsedInvoice\n  }\n};"
+      },
+      "id": "c06308ac-1a34-4923-902f-a9529ca6c11a",
+      "name": "Parse AI Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2016,
+        5136
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const inv = $input.item.json.invoice;\nconst errors = [];\nconst warnings = [];\n\n// Check required fields\nconst requiredFields = [\n  ['invoice_number', 'Invoice Number'],\n  ['invoice_date', 'Invoice Date'],\n  ['currency', 'Currency'],\n  ['supplier.name', 'Supplier Name'],\n  ['buyer.name', 'Buyer Name'],\n  ['line_items', 'Line Items']\n];\n\nfor (const [path, label] of requiredFields) {\n  const parts = path.split('.');\n  let val = inv;\n  for (const p of parts) { val = val?.[p]; }\n  if (val === null || val === undefined || val === '') {\n    errors.push({ code: 'E001', field: path, message: `${label} is required but missing` });\n  }\n}\n\n// Check line items have basics\nif (Array.isArray(inv.line_items) && inv.line_items.length > 0) {\n  inv.line_items.forEach((item, idx) => {\n    const lineNum = item.line_number || (idx + 1);\n    if (!item.description) errors.push({ code: 'E004', field: `line_items[${idx}].description`, message: `Line ${lineNum}: Description is required` });\n    if (item.quantity === null || item.quantity === undefined) errors.push({ code: 'E005', field: `line_items[${idx}].quantity`, message: `Line ${lineNum}: Quantity is required` });\n    if (item.unit_price === null || item.unit_price === undefined) errors.push({ code: 'E006', field: `line_items[${idx}].unit_price`, message: `Line ${lineNum}: Unit price is required` });\n  });\n} else if (!Array.isArray(inv.line_items) || inv.line_items.length === 0) {\n  errors.push({ code: 'E009', field: 'line_items', message: 'Line items array is empty or missing' });\n}\n\n// Warnings only for totals (not errors - commercial invoices often have 0 VAT)\nif ((inv.subtotal_excl_vat || 0) === 0 && (inv.total_incl_vat || 0) === 0) {\n  warnings.push({ code: 'W005', field: 'totals', message: 'Both totals are 0 - may need manual check' });\n}\n\nconst isValid = errors.length === 0;\n\n\nreturn {\n  json: {\n    ...$input.item.json,\n    validation: {\n      isValid,\n      errorCount: errors.length,\n      warningCount: warnings.length,\n      errors,\n      warnings\n    }\n  }\n};"
+      },
+      "id": "9535fdfa-24cf-4e10-a4aa-3b415d3a5eca",
+      "name": "Validate Invoice Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2352,
+        5136
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.item.json;\nconst inv = data.invoice;\n\nconst xmlEscape = (val) => {\n  if (val === null || val === undefined) return '';\n  return String(val)\n    .replace(/&/g, '&amp;')\n    .replace(/</g, '&lt;')\n    .replace(/>/g, '&gt;')\n    .replace(/\"/g, '&quot;')\n    .replace(/'/g, '&apos;');\n};\n\nconst lineItemsXML = (inv.line_items || []).map((item, idx) => `\n    <InvoiceLine>\n      <ID>${xmlEscape(item.line_number || (idx + 1))}</ID>\n      <Note>${xmlEscape(item.notes || '')}</Note>\n      <InvoicedQuantity unitCode=\"${xmlEscape(item.unit || 'EA')}\">${xmlEscape(item.quantity)}</InvoicedQuantity>\n      <LineExtensionAmount currencyID=\"${xmlEscape(inv.currency)}\">${xmlEscape(item.line_total_excl_vat)}</LineExtensionAmount>\n      <TaxTotal>\n        <TaxAmount currencyID=\"${xmlEscape(inv.currency)}\">${xmlEscape(item.vat_amount || 0)}</TaxAmount>\n        <TaxSubtotal>\n          <TaxableAmount currencyID=\"${xmlEscape(inv.currency)}\">${xmlEscape(item.line_total_excl_vat)}</TaxableAmount>\n          <TaxAmount currencyID=\"${xmlEscape(inv.currency)}\">${xmlEscape(item.vat_amount || 0)}</TaxAmount>\n          <TaxCategory><ID>S</ID><Percent>${xmlEscape(item.vat_rate || 0)}</Percent><TaxScheme><ID>VAT</ID></TaxScheme></TaxCategory>\n        </TaxSubtotal>\n      </TaxTotal>\n      <Item><Description>${xmlEscape(item.description)}</Description><Name>${xmlEscape(item.description)}</Name></Item>\n      <Price><PriceAmount currencyID=\"${xmlEscape(inv.currency)}\">${xmlEscape(item.unit_price)}</PriceAmount></Price>\n    </InvoiceLine>`).join('');\n\nconst zbXML = `<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Invoice xmlns=\"urn:oasis:names:specification:ubl:schema:xsd:Invoice-2\"\n         xmlns:cac=\"urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2\"\n         xmlns:cbc=\"urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2\">\n  <cbc:UBLVersionID>2.1</cbc:UBLVersionID>\n  <cbc:CustomizationID>urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0</cbc:CustomizationID>\n  <cbc:ProfileID>urn:fdc:peppol.eu:2017:poacc:billing:01:1.0</cbc:ProfileID>\n  <cbc:ID>${xmlEscape(inv.invoice_number)}</cbc:ID>\n  <cbc:IssueDate>${xmlEscape(inv.invoice_date)}</cbc:IssueDate>\n  <cbc:DueDate>${xmlEscape(inv.due_date || '')}</cbc:DueDate>\n  <cbc:InvoiceTypeCode>${inv.document_type === 'CREDIT_NOTE' ? '381' : '380'}</cbc:InvoiceTypeCode>\n  <cbc:Note>${xmlEscape(inv.notes || '')}</cbc:Note>\n  <cbc:DocumentCurrencyCode>${xmlEscape(inv.currency)}</cbc:DocumentCurrencyCode>\n  <cbc:BuyerReference>${xmlEscape(inv.purchase_order_number || '')}</cbc:BuyerReference>\n  ${inv.purchase_order_number ? `<cac:OrderReference><cbc:ID>${xmlEscape(inv.purchase_order_number)}</cbc:ID></cac:OrderReference>` : ''}\n  <cac:AccountingSupplierParty><cac:Party>\n    <cac:PartyName><cbc:Name>${xmlEscape(inv.supplier?.name)}</cbc:Name></cac:PartyName>\n    <cac:PostalAddress><cbc:StreetName>${xmlEscape(inv.supplier?.address)}</cbc:StreetName><cac:Country><cbc:IdentificationCode>${xmlEscape(inv.supplier?.country_code)}</cbc:IdentificationCode></cac:Country></cac:PostalAddress>\n    <cac:PartyTaxScheme><cbc:CompanyID>${xmlEscape(inv.supplier?.vat_number)}</cbc:CompanyID><cac:TaxScheme><cbc:ID>VAT</cbc:ID></cac:TaxScheme></cac:PartyTaxScheme>\n    <cac:PartyLegalEntity><cbc:RegistrationName>${xmlEscape(inv.supplier?.name)}</cbc:RegistrationName></cac:PartyLegalEntity>\n  </cac:Party></cac:AccountingSupplierParty>\n  <cac:AccountingCustomerParty><cac:Party>\n    <cac:PartyName><cbc:Name>${xmlEscape(inv.buyer?.name)}</cbc:Name></cac:PartyName>\n    <cac:PostalAddress><cbc:StreetName>${xmlEscape(inv.buyer?.address)}</cbc:StreetName><cac:Country><cbc:IdentificationCode>${xmlEscape(inv.buyer?.country_code)}</cbc:IdentificationCode></cac:Country></cac:PostalAddress>\n    <cac:PartyTaxScheme><cbc:CompanyID>${xmlEscape(inv.buyer?.vat_number)}</cbc:CompanyID><cac:TaxScheme><cbc:ID>VAT</cbc:ID></cac:TaxScheme></cac:PartyTaxScheme>\n    <cac:PartyLegalEntity><cbc:RegistrationName>${xmlEscape(inv.buyer?.name)}</cbc:RegistrationName></cac:PartyLegalEntity>\n  </cac:Party></cac:AccountingCustomerParty>\n  <cac:PaymentMeans>\n    <cbc:PaymentMeansCode>30</cbc:PaymentMeansCode>\n    <cbc:PaymentDueDate>${xmlEscape(inv.due_date || '')}</cbc:PaymentDueDate>\n    <cac:PayeeFinancialAccount><cbc:ID>${xmlEscape(inv.supplier?.iban || '')}</cbc:ID><cac:FinancialInstitutionBranch><cbc:ID>${xmlEscape(inv.supplier?.swift || '')}</cbc:ID></cac:FinancialInstitutionBranch></cac:PayeeFinancialAccount>\n  </cac:PaymentMeans>\n  ${inv.payment_terms ? `<cac:PaymentTerms><cbc:Note>${xmlEscape(inv.payment_terms)}</cbc:Note></cac:PaymentTerms>` : ''}\n  <cac:TaxTotal>\n    <cbc:TaxAmount currencyID=\"${xmlEscape(inv.currency)}\">${xmlEscape(inv.total_vat || 0)}</cbc:TaxAmount>\n    <cac:TaxSubtotal>\n      <cbc:TaxableAmount currencyID=\"${xmlEscape(inv.currency)}\">${xmlEscape(inv.subtotal_excl_vat || 0)}</cbc:TaxableAmount>\n      <cbc:TaxAmount currencyID=\"${xmlEscape(inv.currency)}\">${xmlEscape(inv.total_vat || 0)}</cbc:TaxAmount>\n      <cac:TaxCategory><cbc:ID>S</cbc:ID><cac:TaxScheme><cbc:ID>VAT</cbc:ID></cac:TaxScheme></cac:TaxCategory>\n    </cac:TaxSubtotal>\n  </cac:TaxTotal>\n  <cac:LegalMonetaryTotal>\n    <cbc:LineExtensionAmount currencyID=\"${xmlEscape(inv.currency)}\">${xmlEscape(inv.subtotal_excl_vat || 0)}</cbc:LineExtensionAmount>\n    <cbc:TaxExclusiveAmount currencyID=\"${xmlEscape(inv.currency)}\">${xmlEscape(inv.subtotal_excl_vat || 0)}</cbc:TaxExclusiveAmount>\n    <cbc:TaxInclusiveAmount currencyID=\"${xmlEscape(inv.currency)}\">${xmlEscape(inv.total_incl_vat || 0)}</cbc:TaxInclusiveAmount>\n    <cbc:PayableAmount currencyID=\"${xmlEscape(inv.currency)}\">${xmlEscape(inv.total_incl_vat || 0)}</cbc:PayableAmount>\n  </cac:LegalMonetaryTotal>\n  ${lineItemsXML}\n</Invoice>`;\n\nreturn {\n  json: {\n    ...data,\n    zbXML,\n    xmlFileName: `ZB_${inv.invoice_number || data.runId}_${inv.invoice_date || new Date().toISOString().slice(0,10)}.xml`\n  }\n};"
+      },
+      "id": "54277a6b-b48e-4049-82cd-e7760692a1b4",
+      "name": "Generate ZB XML",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3008,
+        4880
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ============================================================\n// OUTPUT EXACT ZB_1_Template.xlsx COLUMNS:\n// A: Tariff Code\n// B: Statistical Quantity\n// C: Statistical UOM\n// D: Declared Quantity\n// E: Declared UOM\n// F: Item Description 1\n// G: Quantity Number\n// H: Quantity Unit\n// I: Country of Origin\n// J: Dangerous Cargo\n// K: Item Amount\n// L: Ap Number\n// ============================================================\nconst data = $input.item.json;\nconst inv = data.invoice;\n\nconst getTariffCode = (description) => {\n  const desc = (description || '').toLowerCase();\n  if (desc.includes('whisky') || desc.includes('whiskey') ||\n      desc.includes('bourbon') || desc.includes('sherry') ||\n      desc.includes('barrique') || desc.includes('kavalan') ||\n      desc.includes('malt')) {\n    return '2208.30.9000';\n  }\n  return '2208.90.9000';\n};\n\nconst getBottlesPerCtn = (description) => {\n  const desc = (description || '').toLowerCase();\n  const match = desc.match(/x\\s*(\\d+)/);\n  if (match) return parseInt(match[1], 10);\n  if (desc.includes('1000ml')) return 6;\n  if (desc.includes('360ml')) return 20;\n  return 1;\n};\n\nconst countryCode = inv.supplier?.country_code || '';\n\nconst zbRows = (inv.line_items || []).map((item) => {\n  const statQty = item.quantity || 0;\n  const bottlesPerCtn = getBottlesPerCtn(item.description);\n  const declaredQty = statQty * bottlesPerCtn;\n  const amount = item.line_total_excl_vat\n    || (item.quantity && item.unit_price ? Math.round(item.quantity * item.unit_price * 100) / 100 : 0);\n\n  return {\n    json: {\n      'Tariff Code':          getTariffCode(item.description),\n      'Statistical Quantity': statQty,\n      'Statistical UOM':      'CTN',\n      'Declared Quantity':    declaredQty,\n      'Declared UOM':         'BTL',\n      'Item Description 1':   item.description || '',\n      'Quantity Number':      statQty,\n      'Quantity Unit':        'CTN',\n      'Country of Origin':    countryCode,\n      'Dangerous Cargo':      'N',\n      'Item Amount':          amount,\n      'Ap Number':            inv.invoice_number || ''\n    }\n  };\n});\n\nreturn zbRows;"
+      },
+      "id": "ded19e67-441b-4063-a7d9-c86c2d430931",
+      "name": "Prepare Excel Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3232,
+        5248
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "toFile",
+        "fileFormat": "xlsx",
+        "options": {
+          "fileName": "={{ 'ZB_' + $json['Ap Number'] + '_' + $now.toFormat('yyyy-MM-dd') + '.xlsx' }}"
+        }
+      },
+      "id": "a7581c26-82f5-41fd-b85d-1834c6690797",
+      "name": "Convert to Excel File",
+      "type": "n8n-nodes-base.spreadsheetFile",
+      "typeVersion": 2,
+      "position": [
+        3552,
+        5248
+      ]
+    },
+    {
+      "parameters": {
+        "name": "={{ $json.xmlFileName }}",
+        "driveId": {
+          "__rl": true,
+          "value": "My Drive",
+          "mode": "list",
+          "cachedResultName": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "1mtENHsjm4G_zsgmxFe_uWN3V2gpijsFR",
+          "mode": "list",
+          "cachedResultName": "n8n File upload",
+          "cachedResultUrl": "https://drive.google.com/drive/folders/1mtENHsjm4G_zsgmxFe_uWN3V2gpijsFR"
+        },
+        "options": {}
+      },
+      "id": "12b0440a-9c19-4060-9f02-c83deea274fb",
+      "name": "Upload XML to Drive",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        3648,
+        4880
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "cvn4jDjezrxSHaG7",
+          "name": "Google Drive OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "name": "={{ 'ZB_' + $json['Ap Number'] + '_' + $now.toFormat('yyyy-MM-dd') + '.xlsx' }}",
+        "driveId": {
+          "__rl": true,
+          "value": "My Drive",
+          "mode": "list",
+          "cachedResultName": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "1mtENHsjm4G_zsgmxFe_uWN3V2gpijsFR",
+          "mode": "list",
+          "cachedResultName": "n8n File upload",
+          "cachedResultUrl": "https://drive.google.com/drive/folders/1mtENHsjm4G_zsgmxFe_uWN3V2gpijsFR"
+        },
+        "options": {}
+      },
+      "id": "82d0f631-55dc-4bdc-a4e1-3d4c2b2869d3",
+      "name": "Upload Excel to Drive",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        3872,
+        5248
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "cvn4jDjezrxSHaG7",
+          "name": "Google Drive OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $('Validate Invoice Data').item.json;\nconst inv = data.invoice;\n\nreturn {\n  json: {\n    runId: data.runId,\n    fileName: data.fileName,\n    fileId: data.fileId,\n    sourcePdfUrl: data.sourcePdfUrl,\n    invoiceNumber: inv.invoice_number || 'UNKNOWN',\n    supplierName: inv.supplier?.name || 'UNKNOWN',\n    buyerName: inv.buyer?.name || 'UNKNOWN',\n    invoiceDate: inv.invoice_date || '',\n    currency: inv.currency || '',\n    totalInclVAT: inv.total_incl_vat || 0,\n    extractionMethod: data.extractionMethod,\n    triggeredAt: data.triggeredAt,\n    completedAt: new Date().toISOString(),\n    status: 'SUCCESS',\n    warnings: data.validation?.warnings || [],\n    warningCount: data.validation?.warningCount || 0,\n    errorCount: 0,\n    errors: []\n  }\n};"
+      },
+      "id": "9dd9525b-b9ab-4dce-b043-4134e715893d",
+      "name": "Build Success Log",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4688,
+        5040
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "arifulislamtanvir56@gmail.com",
+        "subject": "=✅ Invoice Processed: {{ $json.invoiceNumber }} – {{ $json.supplierName }}",
+        "emailType": "text",
+        "message": "=Invoice successfully processed.\n\nRun ID: {{ $json.runId }}\nFile: {{ $json.fileName }}\nInvoice #: {{ $json.invoiceNumber }}\nSupplier: {{ $json.supplierName }}\nBuyer: {{ $json.buyerName }}\nDate: {{ $json.invoiceDate }}\nCurrency: {{ $json.currency }}\nTotal: {{ $json.totalInclVAT }}\nExtraction: {{ $json.extractionMethod }}\nCompleted: {{ $json.completedAt }}\nSource PDF: {{ $json.sourcePdfUrl }}\n{{ $json.warningCount > 0 ? '⚠️ Warnings: ' + $json.warningCount : 'No warnings.' }}",
+        "options": {}
+      },
+      "id": "7948a1d2-bf42-4d8f-a96d-daa0aeb99690",
+      "name": "Notify Team – Success",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        4992,
+        5040
+      ],
+      "webhookId": "d513daf7-3809-44b7-8ef3-068c934ea3d5",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "6JTO1cpd6rpAdxRw",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1cKCRDSF7RHrZyHQhv3eqvCmkfnXidXigvRtEfGyxS4c",
+          "mode": "list",
+          "cachedResultName": "Testin OCR",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1cKCRDSF7RHrZyHQhv3eqvCmkfnXidXigvRtEfGyxS4c/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1cKCRDSF7RHrZyHQhv3eqvCmkfnXidXigvRtEfGyxS4c/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Invoice Number": "={{ $('Build Success Log').item.json.invoiceNumber }}",
+            "Supplier Name": "={{ $('Build Success Log').item.json.supplierName }}",
+            "Amount": "={{ $('Build Success Log').item.json.totalInclVAT }}",
+            "Currency": "={{ $('Build Success Log').item.json.currency }}",
+            "Status": "Success",
+            "Date/Time": "={{ $now }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Date/Time",
+              "displayName": "Date/Time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Invoice Number",
+              "displayName": "Invoice Number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Supplier Name",
+              "displayName": "Supplier Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Amount",
+              "displayName": "Amount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Currency",
+              "displayName": "Currency",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "e4df8d9b-14a5-4af6-a92e-c87ef3d8db76",
+      "name": "Write to Audit Log Sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        5312,
+        5040
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "mPmshGBLOmfHP2Sb",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.item.json;\nconst inv = data.invoice || {};\nconst validation = data.validation || {};\n\nreturn {\n  json: {\n    runId: data.runId,\n    fileName: data.fileName,\n    fileId: data.fileId,\n    sourcePdfUrl: data.sourcePdfUrl,\n    invoiceNumber: inv.invoice_number || 'UNKNOWN',\n    supplierName: inv.supplier?.name || 'UNKNOWN',\n    extractionMethod: data.extractionMethod || 'UNKNOWN',\n    triggeredAt: data.triggeredAt,\n    failedAt: new Date().toISOString(),\n    status: 'EXCEPTION',\n    errorCount: validation.errorCount || 0,\n    warningCount: validation.warningCount || 0,\n    errors: validation.errors || [],\n    warnings: validation.warnings || [],\n    errorSummary: (validation.errors || []).map(e => `[${e.code}] ${e.field}: ${e.message}`).join(' | ')\n  }\n};"
+      },
+      "id": "d9985690-5081-4017-ba68-78ab59d95535",
+      "name": "Build Exception Log",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3024,
+        5952
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "arifulislamtanvir56@gmail.com",
+        "subject": "=🚨 Invoice FAILED: {{ $json.invoiceNumber }} – {{ $json.supplierName }}",
+        "emailType": "text",
+        "message": "=Invoice FAILED validation.\n\nRun ID: {{ $json.runId }}\nFile: {{ $json.fileName }}\nFailed At: {{ $json.failedAt }}\nSource PDF: {{ $json.sourcePdfUrl }}\n\nERRORS:\n{{ $json.errorSummary }}\n\nPlease correct and re-upload.",
+        "options": {}
+      },
+      "id": "0d8dcf49-4e5d-4694-97c5-76d79099c65a",
+      "name": "Notify Team – Exception",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        3344,
+        5952
+      ],
+      "webhookId": "367d8dd7-cf3c-4ff4-8bdd-a8363c5eed1c",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "6JTO1cpd6rpAdxRw",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1cKCRDSF7RHrZyHQhv3eqvCmkfnXidXigvRtEfGyxS4c",
+          "mode": "list",
+          "cachedResultName": "Testin OCR",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1cKCRDSF7RHrZyHQhv3eqvCmkfnXidXigvRtEfGyxS4c/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1cKCRDSF7RHrZyHQhv3eqvCmkfnXidXigvRtEfGyxS4c/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Date/Time": "={{ $now }}",
+            "Invoice Number": "={{ $('Build Exception Log').item.json.invoiceNumber }}",
+            "Supplier Name": "={{ $('Build Exception Log').item.json.supplierName }}",
+            "Status": "Failed",
+            "Amount": "={{ $('Parse AI Response').item.json.Invoice?.total_amount || 'N/A' }}",
+            "Currency": "={{ $('Parse AI Response').item.json.Invoice?.currency || 'N/A' }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Date/Time",
+              "displayName": "Date/Time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Invoice Number",
+              "displayName": "Invoice Number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Supplier Name",
+              "displayName": "Supplier Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Amount",
+              "displayName": "Amount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Currency",
+              "displayName": "Currency",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "063d3a3d-eff6-4550-9db8-042452bcc430",
+      "name": "Log Exception to Sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        3664,
+        5952
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "mPmshGBLOmfHP2Sb",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "move",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $('Build Exception Log').item.json.fileId }}",
+          "mode": "id"
+        },
+        "driveId": {
+          "__rl": true,
+          "value": "My Drive",
+          "mode": "list",
+          "cachedResultName": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "1BB8fy_yMYiHo9JaUh6D2TFXd2QurOW0E",
+          "mode": "list",
+          "cachedResultName": "Exception Folder",
+          "cachedResultUrl": "https://drive.google.com/drive/folders/1BB8fy_yMYiHo9JaUh6D2TFXd2QurOW0E"
+        }
+      },
+      "id": "b6cc39c5-d512-44e5-8f70-cd4ed6f370ff",
+      "name": "Move Failed PDF to Exception Folder",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        4224,
+        5952
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "cvn4jDjezrxSHaG7",
+          "name": "Google Drive OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.mistral.ai/v1/files",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "purpose",
+              "value": "ocr"
+            },
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "data"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        640,
+        4768
+      ],
+      "id": "e02e7e0c-3de4-422a-a3a3-ed41c2014215",
+      "name": "HTTP Request",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "PKxYpooMPJXJlkPJ",
+          "name": "Mistral OCR"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "=https://api.mistral.ai/v1/files/{{ $json.id }}/url",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "expiry",
+              "value": "24"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        848,
+        4768
+      ],
+      "id": "e7829813-c9f1-4365-b81e-6c8d514e81b8",
+      "name": "HTTP Request1",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "PKxYpooMPJXJlkPJ",
+          "name": "Mistral OCR"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.mistral.ai/v1/ocr",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"mistral-ocr-latest\",\n  \"document\": {\n    \"type\": \"document_url\",\n    \"document_url\": \"{{ $json.url }}\"\n  }\n}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1200,
+        4768
+      ],
+      "id": "66f61208-f9d4-4d8f-b8a5-0ec483e80909",
+      "name": "HTTP Request2",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "PKxYpooMPJXJlkPJ",
+          "name": "Mistral OCR"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract OCR text from Mistral response\n// and align it with the same structure as the digital path\nconst mistralResponse = $input.item.json;\n\n// Mistral returns pages array with markdown per page\nconst extractedText = (mistralResponse.pages || [])\n  .map(page => page.markdown || page.text || '')\n  .join('\\n\\n')\n  .trim();\n\nif (!extractedText) {\n  throw new Error('Mistral OCR returned empty text');\n}\n\n// Get metadata from Check Extraction Quality node\n// Must match EXACTLY what Mark Digital Extraction outputs\nconst meta = $('Check Extraction Quality').item.json;\n\nreturn {\n  json: {\n    runId: meta.runId,\n    fileName: meta.fileName,\n    fileId: meta.fileId,\n    triggeredAt: meta.triggeredAt,\n    sourcePdfUrl: meta.sourcePdfUrl,\n    extractedText: extractedText,\n    extractionMethod: 'MISTRAL_OCR',\n    needsOCR: false\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1488,
+        4768
+      ],
+      "id": "2ede0fae-7477-4522-bb72-717009e743d2",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        4432,
+        5040
+      ],
+      "id": "bfd99664-d16f-4b53-bbe9-4840caedbbc1",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "content": "## DUAL-PATH OCR ENGINE\n\nThis switch automatically detects if the invoice is a digital PDF or a flat scan/image.\n\n\nAction Required: Open the HTTP Request2 node and connect your Mistral API credentials to handle the scanned fallback stream.",
+        "height": 368,
+        "width": 384
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1056,
+        4544
+      ],
+      "typeVersion": 1,
+      "id": "165f17d6-3a33-477e-8e0d-1e4ce43ea475",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "## SUCCESS DASHBOARD LOG\n\nAppends data cleanly whenever an invoice passes verification.\n\n\nAction Required: Connect your Google Sheets account. Paste your copied Master Spreadsheet ID into the \"Document\" field. Ensure the sheet name matches your tab title.",
+        "height": 384,
+        "width": 416,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        5152,
+        4832
+      ],
+      "typeVersion": 1,
+      "id": "ae98744b-a6e5-4aee-b030-e0c0357a5183",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "## EXCEPTION LOG\n\nTracks validation failures and structural extraction errors.\n\nAction Required: Map this to the same Spreadsheet ID used above, but target your specific \"Exceptions\" tab layout.",
+        "height": 384,
+        "width": 416,
+        "color": "#7A1E7B"
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        3504,
+        5728
+      ],
+      "typeVersion": 1,
+      "id": "bb940fdd-12bd-44d9-b728-d91992d62b0e",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "## DRIVE MAINTENANC\n\nIsolates corrupt or unreadable files to keep your primary input folder clean and prevent processing loops.\n\nAction Required: Connect Google Drive credentials. Provide your dedicated \"Exceptions\" folder ID in the Parent Folder field.",
+        "height": 384,
+        "width": 416,
+        "color": "#1276A1"
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        4064,
+        5760
+      ],
+      "typeVersion": 1,
+      "id": "953923ba-82ef-4355-b536-59a8a6a4efd9",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "content": "## WORKFLOW ENTRY POINT\n\nThis node automatically listens for new files uploaded to your primary invoices folder.\n\nAction Required:\n\nConnect your Google Drive account credentials.\n\nSelect the specific folder where you will drop incoming invoice PDFs or images.\n\nEnsure the output property is set to provide file data so downstream paths can read the text or send it to Mistral OCR.",
+        "height": 544,
+        "width": 496,
+        "color": "#2D73BE"
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1632,
+        4832
+      ],
+      "typeVersion": 1,
+      "id": "65dd1e10-ae90-47e2-bfe1-e6061e18286c",
+      "name": "Sticky Note4"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Needs OCR?": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mark Digital Extraction",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validation Passed?": {
+      "main": [
+        [
+          {
+            "node": "Generate ZB XML",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Exception Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert XML to Binary1": {
+      "main": [
+        [
+          {
+            "node": "Upload XML to Drive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Drive Trigger": {
+      "main": [
+        [
+          {
+            "node": "Download PDF from Drive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download PDF from Drive": {
+      "main": [
+        [
+          {
+            "node": "Set Run Metadata",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Run Metadata": {
+      "main": [
+        [
+          {
+            "node": "Extract Text from PDF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Text from PDF": {
+      "main": [
+        [
+          {
+            "node": "Check Extraction Quality",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Extraction Quality": {
+      "main": [
+        [
+          {
+            "node": "Needs OCR?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Digital Extraction": {
+      "main": [
+        [
+          {
+            "node": "AI Parse Invoice to JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Parse Invoice to JSON": {
+      "main": [
+        [
+          {
+            "node": "Parse AI Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse AI Response": {
+      "main": [
+        [
+          {
+            "node": "Validate Invoice Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Invoice Data": {
+      "main": [
+        [
+          {
+            "node": "Validation Passed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate ZB XML": {
+      "main": [
+        [
+          {
+            "node": "Convert XML to Binary1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Prepare Excel Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Excel Data": {
+      "main": [
+        [
+          {
+            "node": "Convert to Excel File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to Excel File": {
+      "main": [
+        [
+          {
+            "node": "Upload Excel to Drive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload XML to Drive": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload Excel to Drive": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Build Success Log": {
+      "main": [
+        [
+          {
+            "node": "Notify Team – Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Team – Success": {
+      "main": [
+        [
+          {
+            "node": "Write to Audit Log Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Exception Log": {
+      "main": [
+        [
+          {
+            "node": "Notify Team – Exception",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Team – Exception": {
+      "main": [
+        [
+          {
+            "node": "Log Exception to Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Exception to Sheet": {
+      "main": [
+        [
+          {
+            "node": "Move Failed PDF to Exception Folder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Move Failed PDF to Exception Folder": {
+      "main": [
+        []
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request1": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request2": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "AI Parse Invoice to JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Build Success Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "fc3be308-ce04-4b53-bb0b-eeba199d2325",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "6c9bc69f643f5f9bf021525bb92faaa6d0357d99cdb3d52fe7145b02a00a017c"
+  },
+  "id": "l5TbVd9VHdljkZoo",
+  "tags": []
+}
