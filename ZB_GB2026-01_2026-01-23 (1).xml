@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Invoice xmlns="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2"
+         xmlns:cac="urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2"
+         xmlns:cbc="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2">
+  <cbc:UBLVersionID>2.1</cbc:UBLVersionID>
+  <cbc:CustomizationID>urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0</cbc:CustomizationID>
+  <cbc:ProfileID>urn:fdc:peppol.eu:2017:poacc:billing:01:1.0</cbc:ProfileID>
+  <cbc:ID>GB2026-01</cbc:ID>
+  <cbc:IssueDate>2026-01-23</cbc:IssueDate>
+  <cbc:DueDate></cbc:DueDate>
+  <cbc:InvoiceTypeCode>380</cbc:InvoiceTypeCode>
+  <cbc:Note></cbc:Note>
+  <cbc:DocumentCurrencyCode>USD</cbc:DocumentCurrencyCode>
+  <cbc:BuyerReference>GB332/11/25</cbc:BuyerReference>
+  <cac:OrderReference><cbc:ID>GB332/11/25</cbc:ID></cac:OrderReference>
+  <cac:AccountingSupplierParty><cac:Party>
+    <cac:PartyName><cbc:Name>KING CAR FOOD INDUSTRIAL CO., LTD.</cbc:Name></cac:PartyName>
+    <cac:PostalAddress><cbc:StreetName>326, SECTION 2, YUAN-SHAN ROAD, YUAN-SHAN, I-LAN, TAIWAN</cbc:StreetName><cac:Country><cbc:IdentificationCode>TW</cbc:IdentificationCode></cac:Country></cac:PostalAddress>
+    <cac:PartyTaxScheme><cbc:CompanyID></cbc:CompanyID><cac:TaxScheme><cbc:ID>VAT</cbc:ID></cac:TaxScheme></cac:PartyTaxScheme>
+    <cac:PartyLegalEntity><cbc:RegistrationName>KING CAR FOOD INDUSTRIAL CO., LTD.</cbc:RegistrationName></cac:PartyLegalEntity>
+  </cac:Party></cac:AccountingSupplierParty>
+  <cac:AccountingCustomerParty><cac:Party>
+    <cac:PartyName><cbc:Name>GRAND BRANDS (M) SDN. BHD.</cbc:Name></cac:PartyName>
+    <cac:PostalAddress><cbc:StreetName>WISMA HAI-O, LOT 11995, BATU 2, JALAN KAPAR, 41400 KLANG, SELANGOR DARUL EHSAN, MALAYSIA.</cbc:StreetName><cac:Country><cbc:IdentificationCode>MY</cbc:IdentificationCode></cac:Country></cac:PostalAddress>
+    <cac:PartyTaxScheme><cbc:CompanyID></cbc:CompanyID><cac:TaxScheme><cbc:ID>VAT</cbc:ID></cac:TaxScheme></cac:PartyTaxScheme>
+    <cac:PartyLegalEntity><cbc:RegistrationName>GRAND BRANDS (M) SDN. BHD.</cbc:RegistrationName></cac:PartyLegalEntity>
+  </cac:Party></cac:AccountingCustomerParty>
+  <cac:PaymentMeans>
+    <cbc:PaymentMeansCode>30</cbc:PaymentMeansCode>
+    <cbc:PaymentDueDate></cbc:PaymentDueDate>
+    <cac:PayeeFinancialAccount><cbc:ID></cbc:ID><cac:FinancialInstitutionBranch><cbc:ID></cbc:ID></cac:FinancialInstitutionBranch></cac:PayeeFinancialAccount>
+  </cac:PaymentMeans>
+  
+  <cac:TaxTotal>
+    <cbc:TaxAmount currencyID="USD">0</cbc:TaxAmount>
+    <cac:TaxSubtotal>
+      <cbc:TaxableAmount currencyID="USD">20100</cbc:TaxableAmount>
+      <cbc:TaxAmount currencyID="USD">0</cbc:TaxAmount>
+      <cac:TaxCategory><cbc:ID>S</cbc:ID><cac:TaxScheme><cbc:ID>VAT</cbc:ID></cac:TaxScheme></cac:TaxCategory>
+    </cac:TaxSubtotal>
+  </cac:TaxTotal>
+  <cac:LegalMonetaryTotal>
+    <cbc:LineExtensionAmount currencyID="USD">20100</cbc:LineExtensionAmount>
+    <cbc:TaxExclusiveAmount currencyID="USD">20100</cbc:TaxExclusiveAmount>
+    <cbc:TaxInclusiveAmount currencyID="USD">20100</cbc:TaxInclusiveAmount>
+    <cbc:PayableAmount currencyID="USD">20100</cbc:PayableAmount>
+  </cac:LegalMonetaryTotal>
+  
+    <InvoiceLine>
+      <ID>1</ID>
+      <Note></Note>
+      <InvoicedQuantity unitCode="CTNS">15</InvoicedQuantity>
+      <LineExtensionAmount currencyID="USD">3420</LineExtensionAmount>
+      <TaxTotal>
+        <TaxAmount currencyID="USD">0</TaxAmount>
+        <TaxSubtotal>
+          <TaxableAmount currencyID="USD">3420</TaxableAmount>
+          <TaxAmount currencyID="USD">0</TaxAmount>
+          <TaxCategory><ID>S</ID><Percent>0</Percent><TaxScheme><ID>VAT</ID></TaxScheme></TaxCategory>
+        </TaxSubtotal>
+      </TaxTotal>
+      <Item><Description>KAVALAN SOLIST EX-BOURBON CASK, SINGLE CASK STRENGTH SINGLE MALT WHISKY, 1000ML X 6 BOTTLES / CASE, ALCOHOL CONTENT 57.1%</Description><Name>KAVALAN SOLIST EX-BOURBON CASK, SINGLE CASK STRENGTH SINGLE MALT WHISKY, 1000ML X 6 BOTTLES / CASE, ALCOHOL CONTENT 57.1%</Name></Item>
+      <Price><PriceAmount currencyID="USD">228</PriceAmount></Price>
+    </InvoiceLine>
+    <InvoiceLine>
+      <ID>2</ID>
+      <Note></Note>
+      <InvoicedQuantity unitCode="CTNS">10</InvoicedQuantity>
+      <LineExtensionAmount currencyID="USD">2280</LineExtensionAmount>
+      <TaxTotal>
+        <TaxAmount currencyID="USD">0</TaxAmount>
+        <TaxSubtotal>
+          <TaxableAmount currencyID="USD">2280</TaxableAmount>
+          <TaxAmount currencyID="USD">0</TaxAmount>
+          <TaxCategory><ID>S</ID><Percent>0</Percent><TaxScheme><ID>VAT</ID></TaxScheme></TaxCategory>
+        </TaxSubtotal>
+      </TaxTotal>
+      <Item><Description>KAVALAN SOLIST EX-BOURBON CASK, SINGLE CASK STRENGTH SINGLE MALT WHISKY, 1000ML X 6 BOTTLES / CASE, ALCOHOL CONTENT 56.3%</Description><Name>KAVALAN SOLIST EX-BOURBON CASK, SINGLE CASK STRENGTH SINGLE MALT WHISKY, 1000ML X 6 BOTTLES / CASE, ALCOHOL CONTENT 56.3%</Name></Item>
+      <Price><PriceAmount currencyID="USD">228</PriceAmount></Price>
+    </InvoiceLine>
+    <InvoiceLine>
+      <ID>3</ID>
+      <Note></Note>
+      <InvoicedQuantity unitCode="CTNS">20</InvoicedQuantity>
+      <LineExtensionAmount currencyID="USD">5400</LineExtensionAmount>
+      <TaxTotal>
+        <TaxAmount currencyID="USD">0</TaxAmount>
+        <TaxSubtotal>
+          <TaxableAmount currencyID="USD">5400</TaxableAmount>
+          <TaxAmount currencyID="USD">0</TaxAmount>
+          <TaxCategory><ID>S</ID><Percent>0</Percent><TaxScheme><ID>VAT</ID></TaxScheme></TaxCategory>
+        </TaxSubtotal>
+      </TaxTotal>
+      <Item><Description>KAVALAN SOLIST OLOROSO SHERRY CASK, SINGLE CASK STRENGTH SINGLE MALT WHISKY, 1000ML X 6 BOTTLES / CASE, ALCOHOL CONTENT 57.1%</Description><Name>KAVALAN SOLIST OLOROSO SHERRY CASK, SINGLE CASK STRENGTH SINGLE MALT WHISKY, 1000ML X 6 BOTTLES / CASE, ALCOHOL CONTENT 57.1%</Name></Item>
+      <Price><PriceAmount currencyID="USD">270</PriceAmount></Price>
+    </InvoiceLine>
+    <InvoiceLine>
+      <ID>4</ID>
+      <Note></Note>
+      <InvoicedQuantity unitCode="CTNS">19</InvoicedQuantity>
+      <LineExtensionAmount currencyID="USD">6840</LineExtensionAmount>
+      <TaxTotal>
+        <TaxAmount currencyID="USD">0</TaxAmount>
+        <TaxSubtotal>
+          <TaxableAmount currencyID="USD">6840</TaxableAmount>
+          <TaxAmount currencyID="USD">0</TaxAmount>
+          <TaxCategory><ID>S</ID><Percent>0</Percent><TaxScheme><ID>VAT</ID></TaxScheme></TaxCategory>
+        </TaxSubtotal>
+      </TaxTotal>
+      <Item><Description>KAVALAN SOLIST VINHO BARRIQUE, SINGLE CASK STRENGTH SINGLE MALT WHISKY, 1000ML X 6 BOTTLES / CASE, ALCOHOL CONTENT 56.3%</Description><Name>KAVALAN SOLIST VINHO BARRIQUE, SINGLE CASK STRENGTH SINGLE MALT WHISKY, 1000ML X 6 BOTTLES / CASE, ALCOHOL CONTENT 56.3%</Name></Item>
+      <Price><PriceAmount currencyID="USD">360</PriceAmount></Price>
+    </InvoiceLine>
+    <InvoiceLine>
+      <ID>5</ID>
+      <Note></Note>
+      <InvoicedQuantity unitCode="CTNS">6</InvoicedQuantity>
+      <LineExtensionAmount currencyID="USD">2160</LineExtensionAmount>
+      <TaxTotal>
+        <TaxAmount currencyID="USD">0</TaxAmount>
+        <TaxSubtotal>
+          <TaxableAmount currencyID="USD">2160</TaxableAmount>
+          <TaxAmount currencyID="USD">0</TaxAmount>
+          <TaxCategory><ID>S</ID><Percent>0</Percent><TaxScheme><ID>VAT</ID></TaxScheme></TaxCategory>
+        </TaxSubtotal>
+      </TaxTotal>
+      <Item><Description>KAVALAN SOLIST VINHO BARRIQUE, SINGLE CASK STRENGTH SINGLE MALT WHISKY, 1000ML X 6 BOTTLES / CASE, ALCOHOL CONTENT 54.8%</Description><Name>KAVALAN SOLIST VINHO BARRIQUE, SINGLE CASK STRENGTH SINGLE MALT WHISKY, 1000ML X 6 BOTTLES / CASE, ALCOHOL CONTENT 54.8%</Name></Item>
+      <Price><PriceAmount currencyID="USD">360</PriceAmount></Price>
+    </InvoiceLine>
+</Invoice>
